@@ -2101,16 +2101,16 @@ function renderDashboard() {
       const gIdx = UNITS.indexOf(unit);
       const prog = userProgress[unit.id] || {};
       const isDone = prog.completed;
-      const isLocked = gIdx > 0 && !(userProgress[UNITS[gIdx - 1].id] || {}).completed;
-      const isTeacherLocked = teacherLockedUnits.has(unit.id);
+      const isLocked = false; // v2: todo desbloqueado
+      const isTeacherLocked = false; // v2: sin control del maestro
 
       const card = document.createElement('div');
-      card.className = `unit-card${isDone ? ' completed' : ''}${isLocked ? ' locked' : ''}${isTeacherLocked ? ' teacher-locked' : ''}`;
+      card.className = `unit-card${isDone ? ' completed' : ''}`;
       card.onclick = () => openUnit(unit.id);
       card.innerHTML = `
         <div class="unit-header">
           <div class="unit-icon">${unit.icon}</div>
-          <div class="unit-badge ${isDone ? 'done' : isTeacherLocked ? 'maestro' : 'new'}">${isDone ? '✓ Hecho' : isTeacherLocked ? '🔒 Bloqueado' : isLocked ? '🔒' : '▶ Nuevo'}</div>
+          <div class="unit-badge ${isDone ? 'done' : 'new'}">${isDone ? '✓ Hecho' : '▶ Nuevo'}</div>
         </div>
         <div class="unit-num">Semana ${unit.id}</div>
         <div class="unit-title">${unit.title}</div>
@@ -3275,13 +3275,8 @@ function renderPracticeSection() {
 
   UNITS.forEach((unit, i) => {
     if (!PRACTICE_BANK[unit.id]) return;
-    const seqLocked = i > 0 && !(userProgress[UNITS[i-1].id] || {}).completed;
-    const tLocked = teacherLockedUnits.has(unit.id);
-    const locked = seqLocked || tLocked;
-    const sub = locked
-      ? (tLocked ? '🔒 Bloqueada' : '🔒 Completa la anterior')
-      : `S${unit.id} · ${PRACTICE_BANK[unit.id].length} ejercicios`;
-    html += `<div class="practice-card${locked ? ' practice-locked' : ''}" onclick="openPractice(${unit.id})">
+    const sub = `S${unit.id} · ${PRACTICE_BANK[unit.id].length} ejercicios`;
+    html += `<div class="practice-card" onclick="openPractice(${unit.id})">
       <div class="practice-icon">${unit.icon}</div>
       <div class="practice-label">${unit.title}</div>
       <div class="practice-sub">${sub}</div>
