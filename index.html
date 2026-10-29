@@ -3944,6 +3944,20 @@ function hideLoading() {
 
 window.addEventListener('load', () => {
   initStars();
+
+  // Auto-login: buscar sesión guardada en localStorage
+  const savedKey = Object.keys(localStorage).find(k => k.startsWith('englishlab_v2_'));
+  if (savedKey) {
+    const saved = JSON.parse(localStorage.getItem(savedKey) || 'null');
+    if (saved && saved.nombre) {
+      currentUser  = saved;
+      userProgress = saved.progress || {};
+      teacherLockedUnits = new Set();
+      document.getElementById('login-screen').style.display = 'none';
+      initApp();
+    }
+  }
+
   setTimeout(hideLoading, 1800);
 });
 </script>
