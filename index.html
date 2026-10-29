@@ -613,11 +613,12 @@ header {
   <div class="login-box">
     <div class="login-logo">🧪</div>
     <h1>EnglishLab II</h1>
-    <p>Laboratorio Virtual de Inglés — CBTis 179<br><span style="color:var(--text2)">Ingresa los últimos 4 dígitos de tu número de control</span></p>
-    <input type="text" id="control-input" placeholder="Ej. 7834" maxlength="4" inputmode="numeric" pattern="\d{4}" autocomplete="off" />
-    <button class="btn-primary" id="btn-login" onclick="doLogin()">Entrar al Lab 🚀</button>
+    <p>Laboratorio Virtual de Inglés — CBTis 179<br><span style="color:var(--text2)">Ingresa tu nombre para comenzar</span></p>
+    <input type="text" id="input-nombre" placeholder="Nombre(s)" maxlength="40" autocomplete="off" style="margin-bottom:10px" />
+    <input type="text" id="input-ap" placeholder="Apellido paterno" maxlength="40" autocomplete="off" style="margin-bottom:10px" />
+    <input type="text" id="input-am" placeholder="Apellido materno" maxlength="40" autocomplete="off" />
+    <button class="btn-primary" id="btn-login" onclick="doLogin()" style="margin-top:16px">Entrar al Lab 🚀</button>
     <div class="login-error" id="login-error"></div>
-    <button onclick="showTeacherLogin()" style="background:none;border:none;color:var(--text2);font-size:0.75rem;margin-top:24px;cursor:pointer;text-decoration:underline">Acceso maestro</button>
     <div style="margin-top:28px;border-top:1px solid var(--border);padding-top:16px;text-align:center">
       <p style="font-size:0.78rem;color:var(--accent3);font-style:italic;font-weight:700;margin-bottom:6px">&#x00A1;Porque la DGETI se siente y se siente bien!</p>
       <p style="font-size:0.7rem;color:var(--text2);line-height:1.5">© Luis Eduardo Ibarra Hernández<br>CBTis 179 · DGETI Hidalgo</p>
@@ -2010,61 +2011,41 @@ function initStars() {
 // ============================================================
 //  AUTH — ALUMNO
 // ============================================================
-async function doLogin() {
-  const pin = document.getElementById('control-input').value.trim();
-  const err = document.getElementById('login-error');
-  const btn = document.getElementById('btn-login');
-  if (!/^\d{4}$/.test(pin)) { err.textContent = 'Ingresa exactamente 4 dígitos.'; return; }
+function doLogin() {
+  const nombre = document.getElementById('input-nombre').value.trim();
+  const ap     = document.getElementById('input-ap').value.trim();
+  const am     = document.getElementById('input-am').value.trim();
+  const err    = document.getElementById('login-error');
+
+  if (!nombre || !ap || !am) {
+    err.textContent = '❌ Completa los tres campos.';
+    return;
+  }
+
+  const nombreCompleto = (ap + ' ' + am + ' ' + nombre).toUpperCase();
+  const storageKey = 'englishlab_v2_' + nombreCompleto.replace(/\s+/g, '_');
+
+  // Recuperar progreso guardado si existe
+  const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+  if (saved) {
+    currentUser = saved;
+    userProgress = saved.progress || {};
+  } else {
+    currentUser = { nombre: nombreCompleto, xp: 0, _key: storageKey };
+    userProgress = {};
+  }
+
+  teacherLockedUnits = new Set(); // todo desbloqueado
 
   err.textContent = '';
-  btn.disabled = true;
-  btn.textContent = 'Buscando...';
-
-  try {
-    const { data, error } = await sb
-      .from('students')
-      .select('*')
-      .eq('control_pin', pin)
-      .single();
-
-    if (error || !data) {
-      err.textContent = '❌ No encontrado. Consulta a tu maestro.';
-      btn.disabled = false; btn.textContent = 'Entrar al Lab 🚀';
-      return;
-    }
-
-    // Actualizar last_seen (no bloqueante)
-    sb.from('students').update({ last_seen: new Date().toISOString() }).eq('id', data.id);
-
-    // Cargar progreso
-    const { data: progRows } = await sb
-      .from('unit_progress')
-      .select('*')
-      .eq('student_id', data.id);
-
-    userProgress = {};
-    (progRows || []).forEach(r => {
-      userProgress[r.unit_id] = { completed: r.completed, xp: r.xp_earned, correct: r.correct, total: r.total, acc: r.accuracy };
-    });
-
-    currentUser = { ...data };
-
-    // Cargar semanas bloqueadas por el maestro
-    try {
-      const { data: locksData } = await sb.from('unit_locks').select('unit_id');
-      teacherLockedUnits = new Set((locksData || []).map(r => r.unit_id));
-    } catch(_) { teacherLockedUnits = new Set(); }
-
-    document.getElementById('login-screen').style.display = 'none';
-    initApp();
-  } catch (e) {
-    err.textContent = '⚠️ Error de conexión. Verifica tu internet.';
-    btn.disabled = false; btn.textContent = 'Entrar al Lab 🚀';
-  }
+  document.getElementById('login-screen').style.display = 'none';
+  initApp();
 }
 
-// También entrar con Enter
-document.getElementById('control-input').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+// También entrar con Enter en cualquier campo
+['input-nombre','input-ap','input-am'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+});
 
 // ============================================================
 //  INIT APP
@@ -2074,7 +2055,7 @@ function initApp() {
   document.getElementById('header-xp').textContent = currentUser.xp || 0;
   const displayName = currentUser.nombre || currentUser.control_number;
   document.getElementById('user-avatar-btn').textContent = displayName.substring(0, 2).toUpperCase();
-  document.getElementById('welcome-name').textContent = currentUser.nombre ? currentUser.nombre.split(' ')[0] : currentUser.control_pin;
+  document.getElementById('welcome-name').textContent = currentUser.nombre ? currentUser.nombre.split(' ')[2] || currentUser.nombre.split(' ')[0] : displayName;
   renderDashboard();
   loadLeaderboard();
 }
@@ -2938,11 +2919,6 @@ async function earnXP(amount) {
   document.getElementById('header-xp').textContent = currentUser.xp;
   showToast(`⚡ +${actual} XP`);
   saveLocal();
-  // Sync XP a Supabase
-  if (currentUser.id) {
-    const { error } = await sb.from('students').update({ xp: currentUser.xp }).eq('id', currentUser.id);
-    if (error) console.error('Error al guardar XP:', error.message, error);
-  }
 }
 
 function showToast(msg) {
@@ -2983,20 +2959,7 @@ async function showUnitComplete() {
   await earnXP(xpEarned);
   saveLocal();
 
-  // Upsert progreso en Supabase
-  if (currentUser.id) {
-    await sb.from('unit_progress').upsert({
-      student_id: currentUser.id,
-      unit_id: currentUnit.id,
-      completed: true,
-      xp_earned: xpEarned,
-      correct: sessionCorrect,
-      total: sessionTotal,
-      accuracy: acc,
-      completed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'student_id,unit_id' });
-  }
+  // v2: solo localStorage, sin Supabase
 
   confetti();
 
@@ -3063,7 +3026,7 @@ function showBadgeCelebration(block) {
 function saveLocal() {
   if (!currentUser) return;
   currentUser.progress = userProgress;
-  localStorage.setItem('englishlab_' + (currentUser.control_pin || currentUser.control_number), JSON.stringify(currentUser));
+  localStorage.setItem(currentUser._key || ('englishlab_v2_' + currentUser.nombre), JSON.stringify(currentUser));
 }
 
 // ============================================================
@@ -3368,18 +3331,8 @@ function openPractice(unitId) {
 // ============================================================
 let lbAllData = [];
 
-async function loadLeaderboard() {
-  // Usar students.xp que incluye XP de semanas + práctica libre
-  const { data, error } = await sb.from('students')
-    .select('nombre, control_number, xp')
-    .not('nombre', 'is', null)
-    .gt('xp', 0)
-    .order('xp', { ascending: false })
-    .limit(5);
-
-  if (error || !data || data.length === 0) return;
-
-  lbAllData = data;
+function loadLeaderboard() {
+  // En v2 (sin Supabase), el leaderboard muestra solo el progreso del usuario actual
   const section = document.getElementById('leaderboard-section');
   if (!section) return;
   section.style.display = 'block';
@@ -3391,30 +3344,16 @@ function renderLeaderboard(count) {
   const toggleBtn = document.getElementById('lb-toggle');
   if (!list) return;
 
-  const medals = ['🥇', '🥈', '🥉'];
-  const myCtrl = currentUser.control_number;
-  const shown = lbAllData.slice(0, count);
+  const name = currentUser.nombre || 'Tú';
+  const xp   = currentUser.xp || 0;
 
-  list.innerHTML = shown.map((s, i) => {
-    const isMe = s.control_number === myCtrl;
-    const name = s.nombre || s.control_number;
-    return `<div class="lb-row${isMe ? ' me' : ''}">
-      <span class="lb-rank">${medals[i] || (i + 1)}</span>
-      <span class="lb-name">${escHtml(name)}${isMe ? ' <span style="font-size:0.72rem;color:var(--accent)">(tú)</span>' : ''}</span>
-      <span class="lb-xp">⚡ ${s.xp || 0} XP</span>
-    </div>`;
-  }).join('');
+  list.innerHTML = `<div class="lb-row me">
+    <span class="lb-rank">🥇</span>
+    <span class="lb-name">${escHtml(name)} <span style="font-size:0.72rem;color:var(--accent)">(tú)</span></span>
+    <span class="lb-xp">⚡ ${xp} XP</span>
+  </div>`;
 
-  if (toggleBtn) {
-    if (lbAllData.length > 3) {
-      toggleBtn.style.display = 'block';
-      const expanded = count > 3;
-      toggleBtn.textContent = expanded ? 'Ocultar' : 'Ver top 5 →';
-      toggleBtn.onclick = () => renderLeaderboard(expanded ? 3 : 5);
-    } else {
-      toggleBtn.style.display = 'none';
-    }
-  }
+  if (toggleBtn) toggleBtn.style.display = 'none';
 }
 
 // ============================================================
