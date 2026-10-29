@@ -2038,6 +2038,7 @@ function doLogin() {
   teacherLockedUnits = new Set(); // todo desbloqueado
 
   err.textContent = '';
+  saveLocal(); // guardar inmediatamente para auto-login futuro
   document.getElementById('login-screen').style.display = 'none';
   initApp();
 }
