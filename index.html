@@ -3714,8 +3714,8 @@ function showBossDialog(text, callback) {
   if (_dialogTid) clearTimeout(_dialogTid);
   function type() {
     if (_dialogSkip) { el.textContent = text; if (callback) _dialogTid = setTimeout(callback, 400); return; }
-    if (i < text.length) { el.textContent += text[i++]; _dialogTid = setTimeout(type, 18); }
-    else if (callback) { _dialogTid = setTimeout(callback, 700); }
+    if (i < text.length) { el.textContent += text[i++]; _dialogTid = setTimeout(type, 6); }
+    else if (callback) { _dialogTid = setTimeout(callback, 300); }
   }
   type();
 }
