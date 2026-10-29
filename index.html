@@ -3645,10 +3645,8 @@ function openBossZone() {
   const weeksCompleted = Object.keys(userProgress).filter(id => userProgress[id].completed).length;
   document.getElementById('boss-zone-list').innerHTML = BOSSES.map(boss => {
     const defeated = prog[boss.id]?.defeated;
-    const prevOk = boss.id === 1 || prog[boss.id - 1]?.defeated;
-    const weekOk = weeksCompleted >= boss.unlockAfterWeek;
-    const available = prevOk && weekOk && !defeated;
-    const locked = !prevOk || !weekOk;
+    const available = !defeated; // v2: todos los jefes desbloqueados
+    const locked = false;
     let statusHtml, cls;
     if (defeated) {
       statusHtml = `<span class="boss-item-status tag-defeated">✅ Derrotado</span>`;
